@@ -1457,12 +1457,16 @@ The auto-configuration adds the following features on top of Spring's defaults:
 * Custom `Favicon` support.
 * Automatic use of a `ConfigurableWebBindingInitializer` bean (see below).
 
-If you want to take complete control of Spring MVC, you can add your own `@Configuration`
-annotated with `@EnableWebMvc`. If you want to keep Spring Boot MVC features, and
+If you want to keep Spring Boot MVC features, and
 you just want to add additional {spring-reference}#mvc[MVC configuration] (interceptors,
 formatters, view controllers etc.) you can add your own `@Bean` of type
-`WebMvcConfigurerAdapter`, but *without* `@EnableWebMvc`.
+`WebMvcConfigurerAdapter`, but *without* `@EnableWebMvc`. If you wish to provide custom
+instances of `RequestMappingHandlerMapping`, `RequestMappingHandlerAdapter` or
+`ExceptionHandlerExceptionResolver` you can declare a `WebMvcRegistrationsAdapter`
+instance providing such components.
 
+If you want to take complete control of Spring MVC, you can add your own `@Configuration`
+annotated with `@EnableWebMvc`.
 
 
 [[boot-features-spring-mvc-message-converters]]
@@ -2124,7 +2128,8 @@ packaged as an executable archive), there are some limitations in the JSP suppor
   and will also be deployable to a standard container (not limited to, but including
   Tomcat). An executable jar will not work because of a hard coded file pattern in Tomcat.
 
-* Jetty does not currently work as an embedded container with JSPs.
+* With Jetty it should work if you use war packaging, i.e. an executable war will work,
+  and will also be deployable to any standard container.
 
 * Undertow does not support JSPs.
 
@@ -2177,7 +2182,7 @@ The basic features you get out of the box in a web application are:
 * An `AuthenticationManager` bean with in-memory store and a single user (see
   `SecurityProperties.User` for the properties of the user).
 * Ignored (insecure) paths for common static resource locations (`+/css/**+`, `+/js/**+`,
-  `+/images/**+` and `+**/favicon.ico+`).
+  `+/images/**+`, `+/webjars/**+` and `+**/favicon.ico+`).
 * HTTP Basic security for all other endpoints.
 * Security events published to Spring's `ApplicationEventPublisher` (successful and
   unsuccessful authentication and access denied).
@@ -3311,12 +3316,31 @@ real-time search and analytics engine. Spring Boot offers basic auto-configurati
 the Elasticsearch and abstractions on top of it provided by
 https://github.com/spring-projects/spring-data-elasticsearch[Spring Data Elasticsearch].
 There is a `spring-boot-starter-data-elasticsearch` '`Starter`' for collecting the
-dependencies in a convenient way.
+dependencies in a convenient way. Spring Boot also supports
+https://github.com/searchbox-io/Jest[Jest].
 
+
+
+[[boot-features-connecting-to-elasticsearch-jest]]
+==== Connecting to Elasticsearch using Spring Data
+If you have `Jest` on the classpath, you can inject an auto-configured `JestClient`
+targeting `http://localhost:9200` by default. You can further tune how the client is
+configured:
+
+[source,properties,indent=0]
+----
+	spring.jest.uris=http://search.example.com:9200
+	spring.jest.read-timeout=10000
+	spring.jest.username=user
+	spring.jest.password=secret
+----
+
+To take full control over the registration, define a `JestClient` bean.
 
 
 [[boot-features-connecting-to-elasticsearch]]
-==== Connecting to Elasticsearch
+[[boot-features-connecting-to-elasticsearch-spring-data]]
+==== Connecting to Elasticsearch using Spring Data
 You can inject an auto-configured `ElasticsearchTemplate` or Elasticsearch `Client`
 instance as you would any other Spring Bean. By default the instance will embed a
 local in-memory server (a `Node` in ElasticSearch terms) and use the current working
@@ -4230,7 +4254,7 @@ reached.
 [[boot-features-restclient]]
 == Calling REST services
 If you need to call remote REST services from your application, you can use Spring
-Framework's `RestTemplate` class. Since `RestTemplate` instances often needs to be
+Framework's `RestTemplate` class. Since `RestTemplate` instances often need to be
 customized before being used, Spring Boot does not provide any single auto-configured
 `RestTemplate` bean. It does, however, auto-configure a `RestTemplateBuilder` which can be
 used to create `RestTemplate` instances when needed. The auto-configured
@@ -4250,7 +4274,7 @@ Here's a typical example:
 			this.restTemplate = restTemplateBuilder.build();
 		}
 
-		public String someRestCall(String name) {
+		public Details someRestCall(String name) {
 			return this.restTemplate.getForObject("/{name}/details", Details.class, name);
 		}
 
@@ -5012,7 +5036,7 @@ database you can use the `@AutoConfigureTestDatabase` annotation:
 [[boot-features-testing-spring-boot-applications-testing-autoconfigured-rest-client]]
 ==== Auto-configured REST clients
 Use `@RestClientTest` annotation can be used if you want to test REST clients. By default
-it will auto configure Jackson and GSON support, configure a `RestTemplateBuilder` and
+it will auto-configure Jackson and GSON support, configure a `RestTemplateBuilder` and
 add support for `MockRestServiceServer`. The specific beans that you want to test should
 be specified using `value` or `components` attribute of `@RestClientTest`:
 
@@ -5024,7 +5048,7 @@ be specified using `value` or `components` attribute of `@RestClientTest`:
 	public class ExampleRestClientTest {
 
 		@Autowired
-		private MyService service;
+		private RemoteVehicleDetailsService service;
 
 		@Autowired
 		private MockRestServiceServer server;
@@ -5034,7 +5058,7 @@ be specified using `value` or `components` attribute of `@RestClientTest`:
 				throws Exception {
 			this.server.expect(requestTo("/greet/details"))
 					.andRespond(withSuccess("hello", MediaType.TEXT_PLAIN));
-			String greeting  = this.service.callRestService();
+			String greeting = this.service.callRestService();
 			assertThat(greeting).isEqualTo("hello");
 		}
 

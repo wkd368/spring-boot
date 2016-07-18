@@ -405,6 +405,20 @@ public class SpringApplicationTests {
 	}
 
 	@Test
+	public void customBeanNameGeneratorWithNonWebApplication() throws Exception {
+		TestSpringApplication application = new TestSpringApplication(
+				ExampleWebConfig.class);
+		application.setWebEnvironment(false);
+		BeanNameGenerator beanNameGenerator = new DefaultBeanNameGenerator();
+		application.setBeanNameGenerator(beanNameGenerator);
+		this.context = application.run();
+		verify(application.getLoader()).setBeanNameGenerator(beanNameGenerator);
+		Object bean = this.context
+				.getBean(AnnotationConfigUtils.CONFIGURATION_BEAN_NAME_GENERATOR);
+		assertThat(bean).isSameAs(beanNameGenerator);
+	}
+
+	@Test
 	public void commandLinePropertySource() throws Exception {
 		SpringApplication application = new SpringApplication(ExampleConfig.class);
 		application.setWebEnvironment(false);
@@ -682,20 +696,17 @@ public class SpringApplicationTests {
 		application.setApplicationContextClass(SpyApplicationContext.class);
 		final LinkedHashSet<ApplicationEvent> events = new LinkedHashSet<ApplicationEvent>();
 		application.addListeners(new ApplicationListener<ApplicationEvent>() {
+
 			@Override
 			public void onApplicationEvent(ApplicationEvent event) {
 				events.add(event);
 			}
+
 		});
 		this.context = application.run();
 		assertThat(events).hasAtLeastOneElementOfType(ApplicationPreparedEvent.class);
 		assertThat(events).hasAtLeastOneElementOfType(ContextRefreshedEvent.class);
-
-		ApplicationListener<ApplicationEvent> listener = this.context.getBean(
-				"testApplicationListener", ApplicationListener.class);
-		verify(listener).onApplicationEvent(argThat(isA(ContextRefreshedEvent.class)));
-		verify(listener).onApplicationEvent(argThat(isA(ApplicationReadyEvent.class)));
-		verifyNoMoreInteractions(listener);
+		verifyTestListenerEvents();
 	}
 
 	@Test
@@ -705,17 +716,23 @@ public class SpringApplicationTests {
 		application.setApplicationContextClass(SpyApplicationContext.class);
 		final LinkedHashSet<ApplicationEvent> events = new LinkedHashSet<ApplicationEvent>();
 		application.addListeners(new ApplicationListener<ApplicationEvent>() {
+
 			@Override
 			public void onApplicationEvent(ApplicationEvent event) {
 				events.add(event);
 			}
+
 		});
 		this.context = application.run();
 		assertThat(events).hasAtLeastOneElementOfType(ApplicationPreparedEvent.class);
 		assertThat(events).hasAtLeastOneElementOfType(ContextRefreshedEvent.class);
+		verifyTestListenerEvents();
+	}
 
-		ApplicationListener<ApplicationEvent> listener = this.context.getBean(
-				"testApplicationListener", ApplicationListener.class);
+	@SuppressWarnings("unchecked")
+	private void verifyTestListenerEvents() {
+		ApplicationListener<ApplicationEvent> listener = this.context
+				.getBean("testApplicationListener", ApplicationListener.class);
 		verify(listener).onApplicationEvent(argThat(isA(ContextRefreshedEvent.class)));
 		verify(listener).onApplicationEvent(argThat(isA(ApplicationReadyEvent.class)));
 		verifyNoMoreInteractions(listener);
